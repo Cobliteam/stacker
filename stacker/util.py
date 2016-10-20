@@ -325,6 +325,7 @@ def handle_hooks(stage, hooks, region, context):
             if required:
                 raise
             continue
+
         if not result:
             if required:
                 logger.error("Required hook %s failed. Return value: %s",
@@ -332,6 +333,16 @@ def handle_hooks(stage, hooks, region, context):
                 sys.exit(1)
             logger.warning("Non-required hook %s failed. Return value: %s",
                            hook["path"], result)
+
+        if isinstance(result, bool):
+            pass
+        elif isinstance(result, dict):
+            for key, value in result.items():
+                context.set_hook_data(key, value)
+
+        else:
+            logger.warning("Hook result is not a dictionary, not storing: %s",
+                           hook["path"])
 
 
 def get_config_directory():

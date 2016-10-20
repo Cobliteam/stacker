@@ -1,7 +1,12 @@
+import logging
+
 from .config import parse_config
 from .exceptions import MissingEnvironment
 from .stack import Stack
 from .lookups import register_lookup_handler
+
+
+logger = logging.getLogger(__name__)
 
 
 def get_fqn(base_fqn, delimiter, name=None):
@@ -60,6 +65,7 @@ class Context(object):
         self.tags = {
             'stacker_namespace': self.namespace
         }
+        self.hook_data = {}
 
     def load_config(self, conf_string):
         self.config = parse_config(conf_string, environment=self.environment)
@@ -122,3 +128,13 @@ class Context(object):
 
         """
         return get_fqn(self._base_fqn, self.namespace_delimiter, name)
+
+    def set_hook_data(self, key, value):
+        """Add some information to the hook data with the given key
+
+        Can be used by hooks to store information that can be used later by
+        blueprints
+        """
+
+        logger.debug("hook data: %s = %s", key, value)
+        self.hook_data[key] = value
