@@ -29,7 +29,7 @@ class Context(object):
     the command line and specified in the config to `Stack` objects.
 
     Args:
-        namespace (string): A unique namespace for the stacks being built.
+        namespace (str): A unique namespace for the stacks being built.
         environment (dict): A dictionary used to pass in information about
             the environment. Useful for templating.
         stack_names (list): A list of stack_names to operate on. If not passed,
@@ -41,6 +41,15 @@ class Context(object):
             stack definitions.
         force_stacks (list): A list of stacks to force work on. Used to work
             on locked stacks.
+
+    Attributes:
+        hook_data (dict):
+            Information forwarded by hooks for use by blueprints. Data should
+            be added through :meth:`set_hook_data`.
+
+            Hooks included with stacker set the following keys:
+                * ``lambda:*``: Set by \
+                :func:`~stacker.hooks.aws_lambda.upload_lambda_functions`
 
     """
 
@@ -130,10 +139,19 @@ class Context(object):
         return get_fqn(self._base_fqn, self.namespace_delimiter, name)
 
     def set_hook_data(self, key, value):
-        """Add some information to the hook data with the given key
+        """Add some information to the hook data with the given key.
 
-        Can be used by hooks to store information that can be used later by
-        blueprints
+        Used by hooks to store information that can be retrieved in blueprints.
+        Hooks are encourage to namespace their keys in a way that does not
+        cause confusion, and allows blueprints to easily reference the data
+        they need.
+
+        Args:
+            key (str): key to add to the hook data
+            value (str): key to add to the hook data
+
+        See Also:
+            :attr:`hook_data`
         """
 
         logger.debug("hook data: %s = %s", key, value)
