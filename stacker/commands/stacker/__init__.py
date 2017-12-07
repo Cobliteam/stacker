@@ -1,4 +1,5 @@
 import logging
+import os.path
 
 from .build import Build
 from .destroy import Destroy
@@ -25,10 +26,17 @@ class Stacker(BaseCommand):
         else:
             logger.info("Using default AWS provider mode")
 
+        if hasattr(options.config, 'name'):
+            base_path = os.path.abspath(os.path.dirname(options.config.name))
+            logger.info('Using paths relative to %s', base_path)
+        else:
+            base_path = None
+
         config = load_config(
             options.config.read(),
             environment=options.environment,
-            validate=True)
+            validate=True,
+            base_path=base_path)
 
         options.provider = default.Provider(
             region=options.region,

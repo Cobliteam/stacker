@@ -1,6 +1,8 @@
 import copy
 import sys
 import logging
+import os
+import os.path
 
 from string import Template
 from StringIO import StringIO
@@ -29,7 +31,8 @@ from .translators import *  # NOQA
 logger = logging.getLogger(__name__)
 
 
-def render_parse_load(raw_config, environment=None, validate=True):
+def render_parse_load(raw_config, environment=None, validate=True,
+                      base_path=None):
     """Encapsulates the render -> parse -> validate -> load process.
 
     Args:
@@ -44,9 +47,14 @@ def render_parse_load(raw_config, environment=None, validate=True):
 
     """
 
-    pre_rendered = render(raw_config, environment)
+    if base_path is None:
+        base_path = os.getcwd()
+    base_path = os.path.abspath(base_path)
 
-    rendered = process_remote_sources(pre_rendered, environment)
+    rendered, environment = process_includes(raw_config, base_path,
+                                             environment)
+    rendered, environment = process_remote_sources(with_includes, environment)
+    rendered = render(rendered, environment, strict=True)
 
     config = parse(rendered)
 
@@ -68,7 +76,7 @@ def render_parse_load(raw_config, environment=None, validate=True):
     return load(config)
 
 
-def render(raw_config, environment=None):
+def render(raw_config, environment=None, strict=False):
     """Renders a config, using it as a template with the environment.
 
     Args:
@@ -89,7 +97,9 @@ def render(raw_config, environment=None):
     try:
         buff.write(t.substitute(environment))
     except KeyError, e:
-        raise exceptions.MissingEnvironment(e.args[0])
+        if strict:
+            raise exceptions.MissingEnvironment(e.args[0])
+        buff.write(t.safe_substitute(environment))
     except ValueError:
         # Support "invalid" placeholders for lookup placeholders.
         buff.write(t.safe_substitute(environment))
@@ -184,6 +194,48 @@ def dump(config):
         allow_unicode=True)
 
 
+def process_includes(raw_config, base_path, environment=None,
+                     already_included=None):
+    config = yaml.safe_load(raw_config)
+    if not config:
+        return None
+
+    if environment is None:
+        environment = {}
+
+    if 'default_environment' in config:
+        new_environment = config['default_environment'].copy()
+        new_environment.update(environment)
+        environment = new_environment
+
+        re_render = True
+
+    if already_included is None:
+        already_included = set()
+
+    if 'include' in config:
+        for include_path in config.get('include'):
+            include_final_path = os.path.join(base_path, include_path)
+            if include_final_path in already_included:
+                logger.debug('Skipping repeated include %s',
+                             include_final_path)
+                continue
+
+            already_included.add(include_final_path)
+            with open(include_final_path, 'rb') as f:
+                include_raw_config = f.read()
+
+            include_config = process_includes(include_raw_config, base_path,
+                                              environment, already_included)
+            config = merge_map(include_config, config)
+            re_render = True
+
+    if re_render:
+        return render(str(config), environment), environment
+
+    return raw_config, environment
+
+
 def process_remote_sources(raw_config, environment=None):
     """Stage remote package sources and merge in remote configs.
 
@@ -213,6 +265,7 @@ def process_remote_sources(raw_config, environment=None):
             # additional environment lookups
             if not environment:
                 environment = {}
+
             return render(str(config), environment)
 
     return raw_config
@@ -358,6 +411,8 @@ class Config(Model):
 
     stacks = ListType(
         ModelType(Stack), default=[], validators=[not_empty_list])
+
+    default_environment = DictType(StringType, default={})
 
     def validate(self):
         try:
