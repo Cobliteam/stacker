@@ -362,8 +362,7 @@ class Action(BaseAction):
             description="Create/Update stacks",
             action=self._launch_stack,
             tail=self._tail_stack if tail else None,
-            stacks=self.context.get_stacks(),
-            targets=self.context.stack_names)
+            context=self.context)
 
     def pre_run(self, outline=False, dump=False, *args, **kwargs):
         """Any steps that need to be taken prior to running the action."""
