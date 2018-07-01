@@ -362,7 +362,10 @@ Managed Stack Configuration
 External Stack Configuration
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-External stacks have no additional configuration options.
+.. literalinclude:: stack-config-external.yml
+   :language: yaml
+   :name: stack-config-external
+
 
 Stacks Example
 ~~~~~~~~~~~~~~

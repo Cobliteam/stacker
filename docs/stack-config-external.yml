@@ -1,0 +1,5 @@
+# fqn (str, optional): Fully-qualified physical name of the stack to be loaded
+# from CloudFormation. Use instead of ``stack_name`` if the stack lies in a
+# different namespace, as this value *does not* get the namespace prepended
+# to it
+fqn: development-my-stack
