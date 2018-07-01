@@ -1,3 +1,5 @@
+.. highlight:: yaml
+
 =============
 Configuration
 =============
@@ -324,73 +326,43 @@ Stacks
 ------
 
 This is the core part of the config - this is where you define each of the
-stacks that will be deployed in the environment.  The top level keyword
-*stacks* is populated with a list of dictionaries, each representing a single
-stack to be built.
+stacks that will be part of your environment.
+The top level keyword ``stacks`` is populated with a list of dictionaries, each
+representing a single stack.
 
-A stack has the following keys:
+Stacks can be classified as:
 
-**name:**
-  The logical name for this stack, which can be used in conjuction with the
-  ``output`` lookup. The value here must be unique within the config. If no
-  ``stack_name`` is provided, the value here will be used for the name of the
-  CloudFormation stack.
-**class_path:**
-  The python class path to the Blueprint to be used. Specify this or
-  ``template_path`` for the stack.
-**template_path:**
-  Path to raw CloudFormation template (JSON or YAML). Specify this or
-  ``class_path`` for the stack.
-**description:**
-  A short description to apply to the stack. This overwrites any description
-  provided in the Blueprint. See: http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/template-description-structure.html
-**variables:**
-  A dictionary of Variables_ to pass into the Blueprint when rendering the
-  CloudFormation template. Variables_ can be any valid YAML data
-  structure.
-**locked:**
-  (optional) If set to true, the stack is locked and will not be
-  updated unless the stack is passed to stacker via the *--force* flag.
-  This is useful for *risky* stacks that you don't want to take the
-  risk of allowing CloudFormation to update, but still want to make
-  sure get launched when the environment is first created. When ``locked``,
-  it's not necessary to specify a ``class_path`` or ``template_path``.
-**enabled:**
-  (optional) If set to false, the stack is disabled, and will not be
-  built or updated. This can allow you to disable stacks in different
-  environments.
-**protected:**
-  (optional) When running an update in non-interactive mode, if a stack has
-  *protected* set to *true* and would get changed, stacker will switch to
-  interactive mode for that stack, allowing you to approve/skip the change.
-**requires:**
-  (optional) a list of other stacks this stack requires. This is for explicit
-  dependencies - you do not need to set this if you refer to another stack in
-  a Parameter, so this is rarely necessary.
-**tags:**
-  (optional) a dictionary of CloudFormation tags to apply to this stack. This
-  will be combined with the global tags, but these tags will take precendence.
-**stack_name:**
-  (optional) If provided, this will be used as the name of the CloudFormation
-  stack. Unlike ``name``, the value doesn't need to be unique within the config,
-  since you could have multiple stacks with the same name, but in different
-  regions or accounts. (note: the namespace from the environment will be
-  prepended to this)
-**region**:
-  (optional): If provided, specifies the name of the region that the
-  CloudFormation stack should reside in. If not provided, the default region
-  will be used (``AWS_DEFAULT_REGION``, ``~/.aws/config`` or the ``--region``
-  flag). If both ``region`` and ``profile`` are specified, the value here takes
-  precedence over the value in the profile.
-**profile**:
-  (optional): If provided, specifies the name of a AWS profile to use when
-  performing AWS API calls for this stack. This can be used to provision stacks
-  in multiple accounts or regions.
-**stack_policy_path**:
-  (optional): If provided, specifies the path to a JSON formatted stack policy
-  that will be applied when the CloudFormation stack is created and updated.
-  You can use stack policies to prevent CloudFormation from making updates to
-  protected resources (e.g. databases). See: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/protect-stack-resources.html
+Managed
+  Stacks that are fully managed by the current Stacker configuration.
+  They will be created, updated or destroyed as needed.
+External
+  Stacks that will not be modified by the current Stacker configuration.
+  They will only have their outputs loaded to be used as lookups for local
+  stacks, and are effectively "read only".
+  Use them when you need information from stacks in different accounts or
+  regions, that are part of a different Stacker config, or deployed by other
+  tools.
+
+Basic Stack Configuration
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. literalinclude:: stack-config-basic.yml
+   :language: yaml
+   :name: stack-config-basic
+
+
+Managed Stack Configuration
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. literalinclude:: stack-config-managed.yml
+   :language: yaml
+   :name: stack-config-managed
+
+
+External Stack Configuration
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+External stacks have no additional configuration options.
 
 Stacks Example
 ~~~~~~~~~~~~~~
@@ -418,9 +390,12 @@ Here's an example from stacker_blueprints_, used to create a VPC::
           - 10.128.16.0/22
           - 10.128.20.0/22
         CidrBlock: 10.128.0.0/16
+    - name: external-vpc-example
+      stack_name: my-dev-account-vpc
+      profile: dev
 
 Variables
-==========
+=========
 
 Variables are values that will be passed into a `Blueprint
 <blueprints.html>`_ before it is
