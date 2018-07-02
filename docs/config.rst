@@ -367,13 +367,20 @@ External Stack Configuration
    :name: stack-config-external
 
 
-Stacks Example
-~~~~~~~~~~~~~~
+Examples
+~~~~~~~~
 
-Here's an example from stacker_blueprints_, used to create a VPC::
+VPC + Instances
+:::::::::::::::
 
+Here's an example from stacker_blueprints_, used to create a VPC and and two EC2
+Instances::
+
+
+  namespace: example
   stacks:
-    - name: vpc-example
+    - name: vpc
+      stack_name: test-vpc
       class_path: stacker_blueprints.vpc.VPC
       locked: false
       enabled: true
@@ -393,9 +400,49 @@ Here's an example from stacker_blueprints_, used to create a VPC::
           - 10.128.16.0/22
           - 10.128.20.0/22
         CidrBlock: 10.128.0.0/16
-    - name: external-vpc-example
-      stack_name: my-dev-account-vpc
-      profile: dev
+
+    - name: instances
+      stack_name:
+      class_path: stacker_blueprints.ec2.Instances
+      enabled: true
+      variables:
+        SmallInstance:
+          InstanceType: t2.small
+          ImageId: &amazon_linux_ami "${ami owners:amazon name_regex:amzn-ami-hvm-2018.03.*-x86_64-gp2}"
+          AvailabilityZone: ${output vpc::AvailabilityZone0}
+          SubnetId: ${output vpc::PublicSubnet0}
+        LargeInstance:
+          InstanceType: m5.xlarge
+          ImageId: *amazon_linux_ami
+          AvailabilityZone: ${output vpc::AvailabilityZone1}
+          SubnetId: ${output vpc::PublicSubnet1}
+
+
+Referencing External Stacks
+:::::::::::::::::::::::::::
+
+This example creates a security group in VPC from the previous example by
+importing it as an external stack with a custom profile::
+
+  namespace: other-example
+  stacks:
+    - name: vpc
+      fqn: example-test-vpc
+      profile: custom-profile
+      external: yes
+
+    - name: sg
+      class_path: stacker_blueprints.ec2.SecurityGroups
+      variables:
+        SecurityGroups:
+          VpcId: ${output vpc::VpcId}
+          SecurityGroupIngress:
+            - CidrIp: 0.0.0.0/0
+              FromPort: 22
+              ToPort: 22
+              IpProtocol: tcp
+
+
 
 Variables
 =========
