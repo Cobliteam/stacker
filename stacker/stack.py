@@ -65,19 +65,18 @@ class Stack(object):
 
     """
 
-    def __init__(self, definition, context, variables=None, mappings=None,
-                 locked=False, force=False, enabled=True, protected=False):
+    def __init__(self, definition, context, mappings=None, force=False):
         self.name = definition.name
         self.fqn = context.get_fqn(definition.stack_name or self.name)
         self.region = definition.region
         self.profile = definition.profile
+        self.locked = definition.locked
+        self.enabled = definition.enabled
+        self.protected = definition.protected
         self.definition = definition
         self.variables = _gather_variables(definition)
         self.mappings = mappings
-        self.locked = locked
         self.force = force
-        self.enabled = enabled
-        self.protected = protected
         self.context = context
         self.outputs = None
 
