@@ -5,22 +5,27 @@ from future import standard_library
 standard_library.install_aliases()
 from builtins import str
 import copy
-import sys
 import logging
-
-from string import Template
+import sys
 from io import StringIO
+from string import Template
 
 from schematics import Model
 from schematics.exceptions import ValidationError
-from schematics.exceptions import BaseError as SchematicsError
+from schematics.exceptions import (
+    BaseError as SchematicsError,
+    UndefinedValueError,
+    UnknownFieldError
+)
+
 from schematics.types import (
-    ModelType,
-    ListType,
-    StringType,
+    BaseType,
     BooleanType,
     DictType,
-    BaseType
+    ListType,
+    ModelType,
+    PolyModelType,
+    StringType
 )
 
 import yaml
@@ -137,19 +142,9 @@ def parse(raw_config):
                     tmp_list.append(tmp_dict)
                 config_dict[top_level_key] = tmp_list
 
-    # We have to enable non-strict mode, because people may be including top
-    # level keys for re-use with stacks (e.g. including something like
-    # `common_variables: &common_variables`).
-    #
-    # The unfortunate side effect of this is that it propagates down to every
-    # schematics model, and there doesn't seem to be a good way to only disable
-    # strict mode on a single model.
-    #
-    # If we enabled strict mode, it would break backwards compatibility, so we
-    # should consider enabling this in the future.
-    strict = False
-
-    return Config(config_dict, strict=strict)
+    # Top-level excess keys are removed by Config._convert, so enabling strict
+    # mode is fine here.
+    return Config(config_dict, strict=True)
 
 
 def load(config):
@@ -280,7 +275,7 @@ class Hook(Model):
     args = DictType(AnyType)
 
 
-class Stack(Model):
+class BaseStack(Model):
     name = StringType(required=True)
 
     stack_name = StringType(serialize_when_none=False)
@@ -289,6 +284,28 @@ class Stack(Model):
 
     profile = StringType(serialize_when_none=False)
 
+    external = BooleanType(default=False)
+
+
+class ExternalStack(BaseStack):
+    fqn = StringType(serialize_when_none=False)
+
+    @classmethod
+    def _claim_polymorphic(cls, value):
+        if value.get("external", False) is True:
+            return True
+
+    def __init__(self, *args, **kwargs):
+        super(ExternalStack, self).__init__(*args, **kwargs)
+        self.external = True
+
+    def validate_fqn(self, data, value):
+        if value and data["stack_name"]:
+            raise ValidationError("At most one of `fqn` and `stack_name` must "
+                                  "be provided for external stacks")
+
+
+class Stack(BaseStack):
     class_path = StringType(serialize_when_none=False)
 
     template_path = StringType(serialize_when_none=False)
@@ -345,7 +362,6 @@ class Stack(Model):
                 "dthedocs.io/en/latest/config.html#variables for "
                 "additional information."
                 % stack_name)
-        return value
 
 
 class Config(Model):
@@ -405,11 +421,39 @@ class Config(Model):
     lookups = DictType(StringType, serialize_when_none=False)
 
     stacks = ListType(
-        ModelType(Stack), default=[], validators=[not_empty_list])
+        PolyModelType([ExternalStack, Stack]),
+        default=[], validators=[not_empty_list])
 
-    def validate(self):
+    def _remove_excess_keys(self, data):
+        excess_keys = set(data.keys())
+        excess_keys -= self._schema.valid_input_keys
+        if not excess_keys:
+            return data
+
+        logger.debug('Removing excess keys from config input: %s',
+                     excess_keys)
+        clean_data = data.copy()
+        for key in excess_keys:
+            del clean_data[key]
+
+        return clean_data
+
+    def _convert(self, raw_data=None, context=None, **kwargs):
+        if raw_data is not None:
+            # Remove excess top-level keys, since we want to allow them to be
+            # used for custom user variables to be reference later. This is
+            # preferable to just disabling strict mode, as we can still
+            # disallow excess keys in the inner models.
+            raw_data = self._remove_excess_keys(raw_data)
+
+        return super(Config, self)._convert(raw_data=raw_data, context=context,
+                                            **kwargs)
+
+    def validate(self, *args, **kwargs):
         try:
-            super(Config, self).validate()
+            return super(Config, self).validate(*args, **kwargs)
+        except (UndefinedValueError, UnknownFieldError) as e:
+            raise exceptions.InvalidConfig([e.message])
         except SchematicsError as e:
             raise exceptions.InvalidConfig(e.errors)
 

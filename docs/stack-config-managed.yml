@@ -1,0 +1,69 @@
+# class_path (str, optional): The Python class path to the Blueprint to be
+# used. Either this or``template_path`` must be specified to manage a stack.
+class_path: my.package.MyBlueprint
+
+# template_path (str, optional): The path to a file containing a raw
+# Cloudformation template, in JSON or YAML format. Either this or ``class_path``
+# must be specified to manage a stack.
+template_path: stacks/VPC.yaml
+
+# description (str, optional): A short description to apply to the stack. This
+# overrides any description provided in the Blueprint. See the
+# `AWS Documentation`_ for more information.
+#
+# .. _AWS Documentation: http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/template-description-structure.html
+description: This Stack is managed by Stacker.
+
+# variables (dict): A dictionary of Variables_ to pass into the Blueprint when
+# rendering the CloudFormation template. Variables_ can be any valid YAML data
+# structure. The expected types are determined by the chosen Blueprint class or
+# template.
+variables:
+  MyString: string-value
+  MyIntList:
+  - 1
+  - 2
+  - 3
+
+# locked (bool, optional): If set to true, the stack is locked and will not be
+# updated unless ``--force`` flag is passed and includes its name.
+# This is useful for sensitive stacks that should not be updated without an
+# abundance of care.
+# Due to backwards compatibility, there is no need to specify a class or
+# template if this is enabled, but if possible, use the ``external`` option
+# instead.
+locked: false
+
+# enabled (bool, optional); If set to false, the stack is disabled, and will not
+# be created or updated. This can allow you to disable stacks temporarily, or
+# selectively in different environments.
+enabled: true
+
+# protected (bool, optional): If set to true, When running an update in
+# non-interactive mode, and the stack would be modified,  Stacker will
+# switch to interactive mode before applying the changes, allowing you to
+# approve/skip the change.
+protected: false
+
+# requires (list of str, optional): A list of other stack names that must be
+# created/updated before this stack. This is not needed on normal usages, as
+# dependencies are automatically created when using an output from a stack in
+# the variables of another stack. Use it when you know that a hidden dependency
+# exists (or one is documented in the CloudFormation reference).
+dependencies:
+  - a-parent-stack
+  - other-parent-stack
+
+# tags (dict, optional): CloudFormation tags to apply to this stack. These
+# will be combined with (and possibly override) the global tags.
+tags:
+  Service: my-service
+  Department: my-department
+
+# stack_policy_path (str, optional):  path to a JSON formatted stack policy to
+# be applied when the stack is created and updated. You can use stack policies
+# to prevent CloudFormation from making updates to protected resources (e.g.
+# databases). See the `AWS Documentation`_ for more information.
+#
+# .. _AWS Documentation: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/protect-stack-resources.html
+stack_policy_path: policies/disable-delete-bucket.json

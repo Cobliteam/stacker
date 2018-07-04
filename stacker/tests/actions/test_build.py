@@ -3,13 +3,11 @@ from __future__ import division
 from __future__ import absolute_import
 from builtins import str
 import unittest
-from collections import namedtuple
 
 import mock
 
 from stacker import exceptions
 from stacker.actions import build
-from stacker.session_cache import get_session
 from stacker.actions.build import (
     _resolve_parameters,
     _handle_missing_parameters,
@@ -19,6 +17,8 @@ from stacker.context import Context, Config
 from stacker.exceptions import StackDidNotChange, StackDoesNotExist
 from stacker.providers.base import BaseProvider
 from stacker.providers.aws.default import Provider
+from stacker.session_cache import get_session
+from stacker.stack import Stack
 from stacker.status import (
     NotSubmittedStatus,
     COMPLETE,
@@ -143,29 +143,13 @@ class TestBuildAction(unittest.TestCase):
             build_action.run(outline=False)
             self.assertEqual(mock_generate_plan().execute.call_count, 1)
 
-    def test_should_update(self):
-        test_scenario = namedtuple("test_scenario",
-                                   ["locked", "force", "result"])
-        test_scenarios = (
-            test_scenario(locked=False, force=False, result=True),
-            test_scenario(locked=False, force=True, result=True),
-            test_scenario(locked=True, force=False, result=False),
-            test_scenario(locked=True, force=True, result=True)
-        )
-        mock_stack = mock.MagicMock(["locked", "force", "name"])
-        mock_stack.name = "test-stack"
-        for t in test_scenarios:
-            mock_stack.locked = t.locked
-            mock_stack.force = t.force
-            self.assertEqual(build.should_update(mock_stack), t.result)
-
     def test_should_ensure_cfn_bucket(self):
         test_scenarios = [
-            {"outline": False, "dump": False, "result": True},
-            {"outline": True, "dump": False, "result": False},
-            {"outline": False, "dump": True, "result": False},
-            {"outline": True, "dump": True, "result": False},
-            {"outline": True, "dump": "DUMP", "result": False}
+            dict(outline=False, dump=False, result=True),
+            dict(outline=True, dump=False, result=False),
+            dict(outline=False, dump=True, result=False),
+            dict(outline=True, dump=True, result=False),
+            dict(outline=True, dump="DUMP", result=False)
         ]
 
         for scenario in test_scenarios:
@@ -179,64 +163,91 @@ class TestBuildAction(unittest.TestCase):
                 e.args += ("scenario", str(scenario))
                 raise
 
-    def test_should_submit(self):
-        test_scenario = namedtuple("test_scenario",
-                                   ["enabled", "result"])
-        test_scenarios = (
-            test_scenario(enabled=False, result=False),
-            test_scenario(enabled=True, result=True),
-        )
 
-        mock_stack = mock.MagicMock(["enabled", "name"])
-        mock_stack.name = "test-stack"
-        for t in test_scenarios:
-            mock_stack.enabled = t.enabled
-            self.assertEqual(build.should_submit(mock_stack), t.result)
+class TestStack(Stack):
+    def __init__(self, name, context):
+        self.name = name
+        self.fqn = name
+        self.region = None
+        self.profile = None
+        self.locked = False
+        self.enabled = True
+        self.protected = False
+        self.variables = {}
+        self.mappings = {}
+        self.force = False
+        self.context = context
+        self.outputs = None
+
+    @property
+    def requires(self):
+        return set()
+
+    @property
+    def blueprint(self):
+        return mock.MagicMock(rendered='{}')
+
+    @property
+    def stack_policy(self):
+        return None
+
+    @property
+    def tags(self):
+        return {}
+
+    @property
+    def parameter_values(self):
+        return {}
+
+    @property
+    def required_parameter_definitions(self):
+        return {}
+
+    def resolve(self, context, provider):
+        pass
 
 
 class TestLaunchStack(TestBuildAction):
+    def _patch_object(self, *args, **kwargs):
+        m = mock.patch.object(*args, **kwargs)
+        self.addCleanup(m.stop)
+        m.start()
+        return m
+
+    def _get_stack(self, name, *args, **kwargs):
+        if name != self.stack.name or not self.stack_status:
+            raise StackDoesNotExist(name)
+
+        return {'StackName': self.stack.name,
+                'StackStatus': self.stack_status,
+                'Outputs': [],
+                'Tags': []}
+
+    def _make_provider(self):
+        provider = Provider(self.session, interactive=False,
+                            recreate_failed=False)
+        self._patch_object(provider, 'get_stack', side_effect=self._get_stack)
+        self._patch_object(provider, 'update_stack')
+        self._patch_object(provider, 'create_stack')
+        self._patch_object(provider, 'destroy_stack')
+        return provider
+
     def setUp(self):
         self.context = self._get_context()
         self.session = get_session(region=None)
-        self.provider = Provider(self.session, interactive=False,
-                                 recreate_failed=False)
+        self.provider = self._make_provider()
         provider_builder = MockProviderBuilder(self.provider)
         self.build_action = build.Action(self.context,
                                          provider_builder=provider_builder,
                                          cancel=MockThreadingEvent())
+        self._patch_object(self.build_action, "s3_stack_push")
 
-        self.stack = mock.MagicMock()
-        self.stack.region = None
-        self.stack.name = 'vpc'
-        self.stack.fqn = 'vpc'
-        self.stack.blueprint.rendered = '{}'
-        self.stack.locked = False
+        self.stack = TestStack("vpc", self.context)
         self.stack_status = None
 
         plan = self.build_action._generate_plan()
         self.step = plan.steps[0]
         self.step.stack = self.stack
-
-        def patch_object(*args, **kwargs):
-            m = mock.patch.object(*args, **kwargs)
-            self.addCleanup(m.stop)
-            m.start()
-
-        def get_stack(name, *args, **kwargs):
-            if name != self.stack.name or not self.stack_status:
-                raise StackDoesNotExist(name)
-
-            return {'StackName': self.stack.name,
-                    'StackStatus': self.stack_status,
-                    'Outputs': [],
-                    'Tags': []}
-
-        patch_object(self.provider, 'get_stack', side_effect=get_stack)
-        patch_object(self.provider, 'update_stack')
-        patch_object(self.provider, 'create_stack')
-        patch_object(self.provider, 'destroy_stack')
-
-        patch_object(self.build_action, "s3_stack_push")
 
     def _advance(self, new_provider_status, expected_status, expected_reason):
         self.stack_status = new_provider_status

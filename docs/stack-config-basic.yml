@@ -1,0 +1,31 @@
+# name (str): The logical name for the stack, which can be used in conjunction
+# with the output`lookup. The value here must be unique within the whole config.
+# If ``stack_name`` is not provided, it will also determine the name of the
+# stack submitted to CloudFormation (after prepending the configured
+# ``stacker_namespace``)
+name: my-stack/prod
+
+# stack_name (str, optional): Physical name of the stack to be submitted to
+# CloudFormation (after prepending the configured ``stacker_namespace``).
+# Unlike ``name``, this does not need to be unique within the config, as
+# multiple stacks with the same name can be present in different AWS accounts
+# and/or regions.
+stack_name: production-my-stack
+
+# region (str, optional): Name of the region that the CloudFormation stack
+# should reside in. If not provided, the default region will be used (from the
+# ``AWS_DEFAULT_REGION`` env var, ``~/.aws/config`` or the ``--region`` flag).
+# If both ``region`` and ``profile`` are specified, this value takes precedence
+# over the value in the profile.
+region: us-west-1
+
+# profile (str, optional): Name of the AWS profile to use when performing AWS
+# API calls for this stack. This can be used to provision stacks in multiple
+# accounts or regions.
+profile: production-automation
+
+# external (bool, optional): Whether this stack should be marked as external,
+# disabling any kind of modifications to it by Stacker. Such read-only stacks
+# can provide outputs to other managed stacks using different profiles or
+# regions.
+external: false

@@ -27,6 +27,7 @@ from yaml.constructor import ConstructorError
 from yaml.nodes import MappingNode
 
 from .awscli_yamlhelper import yaml_parse
+from stacker.exceptions import FailedVariableLookup
 from stacker.session_cache import get_session
 
 logger = logging.getLogger(__name__)
@@ -352,6 +353,9 @@ def handle_hooks(stage, hooks, provider, context):
         context (:class:`stacker.context.Context`): The current stacker
             context.
     """
+
+    from stacker.variables import Variable
+
     if not hooks:
         logger.debug("No %s hooks defined.", stage)
         return
@@ -367,12 +371,27 @@ def handle_hooks(stage, hooks, provider, context):
     for hook in hooks:
         data_key = hook.data_key
         required = hook.required
-        kwargs = hook.args or {}
         enabled = hook.enabled
         if not enabled:
             logger.debug("hook with method %s is disabled, skipping",
                          hook.path)
             continue
+
+        # Resolve variables
+        kwargs = hook.args.copy() if hook.args else {}
+        try:
+            for key, value in kwargs.items():
+                var = Variable('{}.args.{}'.format(hook.path, key), value)
+                var.resolve(context, provider)
+                kwargs[key] = var.value
+        except FailedVariableLookup as e:
+            if required:
+                raise
+
+            logger.warning("Failed to resolve variable in non-required hook "
+                           " %s: %s", hook.path, e)
+            continue
+
         try:
             method = load_object_from_string(hook.path)
         except (AttributeError, ImportError):
