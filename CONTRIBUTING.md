@@ -57,15 +57,7 @@ Ready to contribute? Here's how to set up `stacker` for local development.
     $ git clone git@github.com:your_name_here/stacker.git
     ```
 
-3. Install your local copy into a virtualenv. Assuming you have virtualenvwrapper installed, this is how you set up your fork for local development:
-
-    ```console
-    $ mkvirtualenv stacker
-    $ cd stacker/
-    $ python setup.py develop
-    ```
-
-4. Create a branch for local development:
+3. Create a branch for local development:
 
     ```console
     $ git checkout -b name-of-your-bugfix-or-feature
@@ -73,15 +65,13 @@ Ready to contribute? Here's how to set up `stacker` for local development.
 
    Now you can make your changes locally.
 
-5. When you're done making changes, check that your changes pass flake8 and the tests, including testing other Python versions with tox:
+4. When you're done making changes, check that your changes pass flake8 and the tests, including testing other Python versions with tox:
 
     ```console
-    $ make test
+    $ make test-all
     ```
 
-   To get flake8 just pip install it into your virtualenv.
-
-6. Commit your changes and push your branch to GitHub:
+5. Commit your changes and push your branch to GitHub:
 
     ```console
     $ git add .
@@ -89,7 +79,7 @@ Ready to contribute? Here's how to set up `stacker` for local development.
     $ git push origin name-of-your-bugfix-or-feature
     ```
 
-7. Submit a pull request through the GitHub website.
+6. Submit a pull request through the GitHub website.
 
 For information about the functional testing suite, see [tests/README.md](./tests).
 

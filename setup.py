@@ -20,6 +20,7 @@ install_requires = [
     "schematics>=2.0.1,<2.1.0",
     "formic2",
     "python-dateutil>=2.0,<3.0",
+    "typing;python_version<'3.5'"
 ]
 
 tests_require = [
@@ -31,10 +32,10 @@ tests_require = [
     "moto~=1.1.24",
     "testfixtures~=4.10.0",
     "coverage~=4.3.4",
-    "flake8-future-import",
+    "nose",
+    "flake8",
+    "flake8-future-import"
 ]
-
-setup_requires = ["nose"]
 
 scripts = [
     "scripts/compare_env",
@@ -64,7 +65,7 @@ if __name__ == "__main__":
         scripts=scripts,
         install_requires=install_requires,
         tests_require=tests_require,
-        setup_requires=setup_requires,
+        extras_require={'testing': tests_require},  # for tox
         test_suite="nose.collector",
         classifiers=[
             "Development Status :: 5 - Production/Stable",
