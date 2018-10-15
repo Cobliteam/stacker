@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 # A global credential cache that can be shared among boto3 sessions. This is
 # inherently threadsafe thanks to the GIL:
 # https://docs.python.org/3/glossary.html#term-global-interpreter-lock
-credential_cache = {}
+_credential_cache = {}  # type: ignore
 
 default_profile = None
 
@@ -39,6 +39,6 @@ def get_session(region, profile=None):
     session = boto3.Session(region_name=region, profile_name=profile)
     c = session._session.get_component('credential_provider')
     provider = c.get_provider('assume-role')
-    provider.cache = credential_cache
+    provider.cache = _credential_cache
     provider._prompter = ui.getpass
     return session

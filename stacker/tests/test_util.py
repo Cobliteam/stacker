@@ -274,7 +274,7 @@ Outputs:
             )
 
 
-hook_queue = queue.Queue()
+hook_queue = queue.Queue()  # type: queue.Queue
 
 
 def mock_hook(*args, **kwargs):

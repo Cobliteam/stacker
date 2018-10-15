@@ -3,11 +3,12 @@ from __future__ import division
 from __future__ import absolute_import
 from builtins import object
 import argparse
+import logging
 import threading
 import signal
 from collections import Mapping
-import logging
 
+from typing import Tuple, Type, Text  # noqa
 from ...environment import parse_environment
 
 logger = logging.getLogger(__name__)
@@ -83,10 +84,10 @@ class BaseCommand(object):
 
     """
 
-    name = None
-    description = None
-    subcommands = tuple()
-    subcommands_help = None
+    name = None  # type: Text
+    description = None  # type: Text
+    subcommands = tuple()  # type: Tuple[Type[BaseCommand], ...]
+    subcommands_help = None  # type: Text
 
     def __init__(self, setup_logging=None, *args, **kwargs):
         self.setup_logging = setup_logging
