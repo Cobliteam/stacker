@@ -60,9 +60,12 @@ class Stack(object):
 
     def __init__(self, definition, context, variables=None, mappings=None,
                  locked=False, force=False, enabled=True, protected=False):
+        stack_name = definition.stack_name or definition.name
+        fqn = definition.stack_fqn or context.get_fqn(stack_name)
+
         self.logging = True
         self.name = definition.name
-        self.fqn = context.get_fqn(definition.stack_name or self.name)
+        self.fqn = fqn
         self.region = definition.region
         self.profile = definition.profile
         self.definition = definition

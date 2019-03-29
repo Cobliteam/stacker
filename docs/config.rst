@@ -387,8 +387,14 @@ A stack has the following keys:
   (optional) If provided, this will be used as the name of the CloudFormation
   stack. Unlike ``name``, the value doesn't need to be unique within the config,
   since you could have multiple stacks with the same name, but in different
-  regions or accounts. (note: the namespace from the environment will be
-  prepended to this)
+  regions or accounts.
+  Note: the namespace from the environment will be prepended to this.
+  Note: conflicts with ``stack_fqn``.
+**stack_fqn:**
+  (optional) If provided, this will be used as the name of the CloudFormation
+  stack. Similar to ``stack_name``, but ignores the configured ``namespace``.
+  Useful to refer to external stacks without broadening the namespace.
+  Note: conflicts with ``stack_name``.
 **region**:
   (optional): If provided, specifies the name of the region that the
   CloudFormation stack should reside in. If not provided, the default region

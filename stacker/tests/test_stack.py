@@ -133,6 +133,15 @@ class TestStack(unittest.TestCase):
         stack = Stack(definition=definition, context=self.context)
         self.assertEquals(stack.tags, {"environment": "prod", "app": "graph"})
 
+    def test_stack_fqn(self):
+        definition = generate_definition(
+            base_name="vpc",
+            stack_id=1,
+            stack_fqn='custom-stack-fqn'
+        )
+        stack = Stack(definition=definition, context=self.context)
+        self.assertEqual(stack.fqn, 'custom-stack-fqn')
+
 
 if __name__ == '__main__':
     unittest.main()

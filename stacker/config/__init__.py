@@ -304,6 +304,8 @@ class Stack(Model):
 
     stack_name = StringType(serialize_when_none=False)
 
+    stack_fqn = StringType(serialize_when_none=False)
+
     region = StringType(serialize_when_none=False)
 
     profile = StringType(serialize_when_none=False)
@@ -369,6 +371,13 @@ class Stack(Model):
                 "additional information."
                 % stack_name)
         return value
+
+    def validate_stack_fqn(self, data, value):
+        if value:
+            if data["stack_name"]:
+                raise ValidationError(
+                    "Only one of `stack_fqn` and `stack_name` can be "
+                    "specified")
 
 
 class Config(Model):

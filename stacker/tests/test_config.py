@@ -126,6 +126,21 @@ class TestConfig(unittest.TestCase):
             error.__str__(),
             "Duplicate stack bastion found at index 0.")
 
+    def test_config_validate_conflicting_names(self):
+        config = Config({
+            "namespace": "prod",
+            "stacks": [
+                {
+                    "name": "bastion",
+                    "class_path": "blueprints.Bastion",
+                    "stack_name": "stack-name",
+                    "stack_fqn": "full-stack-name"},
+                ]
+            }
+        )
+        with self.assertRaises(exceptions.InvalidConfig):
+            config.validate()
+
     def test_dump_unicode(self):
         config = Config()
         config.namespace = "test"
